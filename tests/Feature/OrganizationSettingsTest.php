@@ -2,14 +2,23 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\SyncOrganization;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class OrganizationSettingsTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Queue::fake();
+    }
 
     public function test_user_can_save_yandex_maps_organization_url(): void
     {
@@ -20,7 +29,7 @@ class OrganizationSettingsTest extends TestCase
         ]);
 
         $response
-            ->assertOk()
+            ->assertAccepted()
             ->assertJsonPath(
                 'organization.source_url',
                 'https://yandex.ru/maps/org/yandeks/1124715036/reviews',
@@ -31,6 +40,11 @@ class OrganizationSettingsTest extends TestCase
             'user_id' => $user->id,
             'source_url' => 'https://yandex.ru/maps/org/yandeks/1124715036/reviews',
         ]);
+        Queue::assertPushed(
+            SyncOrganization::class,
+            fn (SyncOrganization $job) => $job->organizationId === $user->organization->id
+                && $job->sourceUrl === 'https://yandex.ru/maps/org/yandeks/1124715036/reviews',
+        );
     }
 
     public function test_regional_yandex_maps_url_is_accepted(): void
@@ -39,7 +53,7 @@ class OrganizationSettingsTest extends TestCase
 
         $this->actingAs($user)->putJson('/api/organization', [
             'url' => 'https://yandex.ru/maps/213/moscow/org/example/123/',
-        ])->assertOk();
+        ])->assertAccepted();
     }
 
     public function test_saving_a_new_url_resets_previous_organization_data(): void
@@ -57,7 +71,7 @@ class OrganizationSettingsTest extends TestCase
 
         $this->actingAs($user)->putJson('/api/organization', [
             'url' => 'https://yandex.com/maps/org/second/200',
-        ])->assertOk();
+        ])->assertAccepted();
 
         $this->assertDatabaseCount('organizations', 1);
         $this->assertDatabaseHas('organizations', [

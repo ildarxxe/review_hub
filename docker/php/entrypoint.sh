@@ -1,20 +1,22 @@
 #!/bin/sh
 set -e
 
-if [ ! -f .env ]; then
-    cp .env.example .env
+if [ "${APP_SKIP_INIT:-false}" != "true" ]; then
+    if [ ! -f .env ]; then
+        cp .env.example .env
+    fi
+
+    if [ ! -f vendor/autoload.php ]; then
+        composer install --no-interaction
+    fi
+
+    if ! grep -q '^APP_KEY=base64:' .env; then
+        php artisan key:generate --force
+    fi
+
+    chmod -R a+rwX storage bootstrap/cache
+
+    php artisan migrate --seed --force
 fi
-
-if [ ! -f vendor/autoload.php ]; then
-    composer install --no-interaction
-fi
-
-if ! grep -q '^APP_KEY=base64:' .env; then
-    php artisan key:generate --force
-fi
-
-chmod -R a+rwX storage bootstrap/cache
-
-php artisan migrate --seed --force
 
 exec "$@"

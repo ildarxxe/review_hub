@@ -82,6 +82,62 @@ class OrganizationSyncServiceTest extends TestCase
         ]);
     }
 
+    public function test_stale_sync_does_not_overwrite_new_organization_url(): void
+    {
+        $user = User::factory()->create();
+        $organization = $user->organization()->create([
+            'source_url' => 'https://yandex.ru/maps/org/old-company/123',
+            'sync_status' => 'pending',
+        ]);
+        $organization->reviews()->create([
+            'external_id' => 'cached-review',
+            'position' => 0,
+            'author' => 'Anna',
+            'rating' => 5,
+            'text' => 'Cached text',
+            'published_at' => new DateTimeImmutable('2026-05-10 12:00:00'),
+        ]);
+
+        $source = new class($organization->id) implements OrganizationDataSource
+        {
+            public function __construct(
+                private readonly int $organizationId,
+            ) {}
+
+            public function fetch(string $url): OrganizationData
+            {
+                \App\Models\Organization::query()
+                    ->whereKey($this->organizationId)
+                    ->update([
+                        'source_url' => 'https://yandex.ru/maps/org/new-company/456',
+                        'sync_status' => 'pending',
+                    ]);
+
+                return new OrganizationData(
+                    externalId: '123',
+                    name: 'Old company',
+                    rating: 4.0,
+                    ratingsCount: 10,
+                    reviewsCount: 0,
+                    reviews: [],
+                );
+            }
+        };
+
+        $result = (new OrganizationSyncService($source))->sync(
+            $organization,
+            'https://yandex.ru/maps/org/old-company/123',
+        );
+
+        $this->assertSame('https://yandex.ru/maps/org/new-company/456', $result->source_url);
+        $this->assertSame('pending', $result->sync_status);
+        $this->assertNull($result->name);
+        $this->assertDatabaseHas('reviews', [
+            'organization_id' => $organization->id,
+            'external_id' => 'cached-review',
+        ]);
+    }
+
     public function test_storage_failure_rolls_back_cached_reviews(): void
     {
         $user = User::factory()->create();

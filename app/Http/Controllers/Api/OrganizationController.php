@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Organization\UpdateOrganizationRequest;
+use App\Jobs\SyncOrganization;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -30,8 +31,11 @@ class OrganizationController extends Controller
             'synced_at' => null,
         ]);
 
+        SyncOrganization::dispatch($organization->id, $organization->source_url)
+            ->afterCommit();
+
         return response()->json([
             'organization' => $organization,
-        ]);
+        ], 202);
     }
 }
