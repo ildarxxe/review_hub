@@ -15,6 +15,6 @@ fi
 
 chmod -R a+rwX storage bootstrap/cache
 
-php artisan migrate --force
+php artisan migrate --seed --force
 
 exec "$@"
