@@ -5,8 +5,10 @@ const organization = ref(null);
 const loading = ref(false);
 
 export function useOrganization() {
-    async function fetchOrganization() {
-        loading.value = true;
+    async function fetchOrganization({ silent = false } = {}) {
+        if (!silent) {
+            loading.value = true;
+        }
 
         try {
             const response = await api.get('/api/organization');
@@ -14,7 +16,9 @@ export function useOrganization() {
 
             return organization.value;
         } finally {
-            loading.value = false;
+            if (!silent) {
+                loading.value = false;
+            }
         }
     }
 
