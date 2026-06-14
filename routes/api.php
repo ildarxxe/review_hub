@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\OrganizationController;
+use App\Http\Controllers\Api\ReviewController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login'])
@@ -12,4 +13,5 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/organization', [OrganizationController::class, 'show']);
     Route::put('/organization', [OrganizationController::class, 'update']);
+    Route::get('/reviews', [ReviewController::class, 'index']);
 });
