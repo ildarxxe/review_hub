@@ -53,7 +53,7 @@ class YandexMapsUrl implements ValidationRule
             || isset($parts['user'])
             || isset($parts['pass'])
             || isset($parts['port'])
-            || ! preg_match('#^/maps/(org/[^/]+(?:/\d+)?|-/[^/]+)(?:/|$)#u', $path)
+            || ! preg_match('#^/maps/((?:[^/]+/){0,3}org/[^/]+/\d+|-/[^/]+)(?:/|$)#u', $path)
         ) {
             $fail('Укажите корректную ссылку на карточку организации в Яндекс.Картах.');
         }

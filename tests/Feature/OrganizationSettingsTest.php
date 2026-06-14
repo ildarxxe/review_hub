@@ -33,6 +33,15 @@ class OrganizationSettingsTest extends TestCase
         ]);
     }
 
+    public function test_regional_yandex_maps_url_is_accepted(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->putJson('/api/organization', [
+            'url' => 'https://yandex.ru/maps/213/moscow/org/example/123/',
+        ])->assertOk();
+    }
+
     public function test_saving_a_new_url_resets_previous_organization_data(): void
     {
         $user = User::factory()->create();
