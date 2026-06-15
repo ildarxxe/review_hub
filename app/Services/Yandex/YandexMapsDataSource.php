@@ -122,8 +122,8 @@ class YandexMapsDataSource implements OrganizationDataSource
             return null;
         }
 
-        return $scheme.'://'.$host.rtrim($path, '/')
-            .'/org/-/'.$organizationId.'/reviews/';
+        return $scheme.'://'.$host.'/maps/org/-/'
+            .$organizationId.'/reviews/';
     }
 
     private function extractPoiOrganizationId(string $query): ?string

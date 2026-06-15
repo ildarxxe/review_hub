@@ -64,7 +64,7 @@ class YandexMapsDataSourceTest extends TestCase
         $this->source()->fetch($url);
 
         Http::assertSent(fn (Request $request) => $request->url()
-            === 'https://yandex.kz/maps/10295/kostanai/org/-/162508758578/reviews/');
+            === 'https://yandex.kz/maps/org/-/162508758578/reviews/');
     }
 
     public function test_it_loads_at_most_six_hundred_reviews(): void
