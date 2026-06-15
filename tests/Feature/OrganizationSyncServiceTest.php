@@ -6,6 +6,7 @@ use App\Contracts\OrganizationDataSource;
 use App\DataTransferObjects\OrganizationData;
 use App\DataTransferObjects\ReviewData;
 use App\Exceptions\OrganizationSyncException;
+use App\Models\Organization;
 use App\Models\User;
 use App\Services\OrganizationSyncService;
 use DateTimeImmutable;
@@ -106,7 +107,7 @@ class OrganizationSyncServiceTest extends TestCase
 
             public function fetch(string $url): OrganizationData
             {
-                \App\Models\Organization::query()
+                Organization::query()
                     ->whereKey($this->organizationId)
                     ->update([
                         'source_url' => 'https://yandex.ru/maps/org/new-company/456',

@@ -18,7 +18,7 @@ class UpdateOrganizationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'url' => ['required', 'string', 'max:2048', new YandexMapsUrl()],
+            'url' => ['required', 'string', 'max:2048', new YandexMapsUrl],
         ];
     }
 }

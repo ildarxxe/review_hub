@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
@@ -17,10 +18,11 @@ class AuthTest extends TestCase
             'password' => '123456',
         ]);
 
-        $response = $this->postJson('/api/login', [
-            'login' => 'admin',
-            'password' => '123456',
-        ]);
+        $response = $this->withHeader('Origin', config('app.url'))
+            ->postJson('/api/login', [
+                'login' => 'admin',
+                'password' => '123456',
+            ]);
 
         $response
             ->assertOk()
@@ -55,13 +57,27 @@ class AuthTest extends TestCase
 
     public function test_authenticated_user_can_log_out(): void
     {
-        $user = User::factory()->create();
+        User::factory()->create([
+            'login' => 'admin',
+            'password' => '123456',
+        ]);
 
-        $this->actingAs($user)
+        $this->withHeader('Origin', config('app.url'))
+            ->postJson('/api/login', [
+                'login' => 'admin',
+                'password' => '123456',
+            ])
+            ->assertOk();
+
+        $this->withHeader('Origin', config('app.url'))
             ->postJson('/api/logout')
             ->assertOk()
             ->assertJsonPath('message', 'Вы вышли из системы.');
 
-        $this->assertGuest();
+        Auth::forgetGuards();
+
+        $this->withHeader('Origin', config('app.url'))
+            ->getJson('/api/user')
+            ->assertUnauthorized();
     }
 }

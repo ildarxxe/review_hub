@@ -172,7 +172,7 @@ class YandexMapsDataSource implements OrganizationDataSource
      */
     private function decodeState(string $html): array
     {
-        $document = new DOMDocument();
+        $document = new DOMDocument;
         $previous = libxml_use_internal_errors(true);
         $loaded = $document->loadHTML($html, LIBXML_NOERROR | LIBXML_NOWARNING);
         libxml_clear_errors();
