@@ -56,6 +56,25 @@ class OrganizationSettingsTest extends TestCase
         ])->assertAccepted();
     }
 
+    public function test_shared_map_url_with_poi_organization_is_accepted(): void
+    {
+        $user = User::factory()->create();
+        $url = 'https://yandex.kz/maps/10295/kostanai/?ll=63.616495%2C53.217643'
+            .'&mode=poi&poi%5Bpoint%5D=63.569732%2C53.219686'
+            .'&poi%5Buri%5D=ymapsbm1%3A%2F%2Forg%3Foid%3D162508758578'
+            .'&utm_source=share&z=14';
+
+        $this->actingAs($user)
+            ->putJson('/api/organization', ['url' => $url])
+            ->assertAccepted()
+            ->assertJsonPath('organization.source_url', $url);
+
+        Queue::assertPushed(
+            SyncOrganization::class,
+            fn (SyncOrganization $job) => $job->sourceUrl === $url,
+        );
+    }
+
     public function test_saving_a_new_url_resets_previous_organization_data(): void
     {
         $user = User::factory()->create();
@@ -103,6 +122,10 @@ class OrganizationSettingsTest extends TestCase
             'another website' => ['https://example.com/maps/org/company/123'],
             'lookalike domain' => ['https://yandex.ru.example.com/maps/org/company/123'],
             'maps home page' => ['https://yandex.ru/maps/'],
+            'share url without oid' => [
+                'https://yandex.kz/maps/10295/kostanai/?mode=poi'
+                .'&poi%5Buri%5D=ymapsbm1%3A%2F%2Forg',
+            ],
             'custom port' => ['https://yandex.ru:8080/maps/org/company/123'],
             'javascript scheme' => ['javascript:alert(1)'],
         ];

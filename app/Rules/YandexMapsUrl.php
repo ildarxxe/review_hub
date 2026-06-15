@@ -48,15 +48,45 @@ class YandexMapsUrl implements ValidationRule
         $host = strtolower($parts['host'] ?? '');
         $path = $parts['path'] ?? '';
 
+        $isOrganizationPath = preg_match(
+            '#^/maps/((?:[^/]+/){0,3}org/[^/]+/\d+|-/[^/]+)(?:/|$)#u',
+            $path,
+        ) === 1;
+
         if (
             ! in_array($scheme, ['http', 'https'], true)
             || ! in_array($host, self::ALLOWED_HOSTS, true)
             || isset($parts['user'])
             || isset($parts['pass'])
             || isset($parts['port'])
-            || ! preg_match('#^/maps/((?:[^/]+/){0,3}org/[^/]+/\d+|-/[^/]+)(?:/|$)#u', $path)
+            || (! $isOrganizationPath && ! $this->hasPoiOrganization($path, $parts['query'] ?? ''))
         ) {
             $fail('Укажите корректную ссылку на карточку организации в Яндекс.Картах.');
         }
+    }
+
+    private function hasPoiOrganization(string $path, string $query): bool
+    {
+        if (preg_match('#^/maps(?:/[^/]+){0,3}/?$#u', $path) !== 1) {
+            return false;
+        }
+
+        parse_str($query, $parameters);
+        $poiUri = $parameters['poi']['uri'] ?? null;
+
+        if (! is_string($poiUri)) {
+            return false;
+        }
+
+        $parts = parse_url($poiUri);
+
+        if (($parts['scheme'] ?? '') !== 'ymapsbm1' || ($parts['host'] ?? '') !== 'org') {
+            return false;
+        }
+
+        parse_str($parts['query'] ?? '', $poiParameters);
+        $oid = $poiParameters['oid'] ?? null;
+
+        return is_string($oid) && ctype_digit($oid);
     }
 }

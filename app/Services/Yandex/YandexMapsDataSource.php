@@ -109,11 +109,44 @@ class YandexMapsDataSource implements OrganizationDataSource
 
         $this->assertAllowedHost($scheme, $host);
 
-        if (! preg_match('#^(.*?/maps/(?:[^/]+/){0,3}org/[^/]+/\d+)#u', $path, $matches)) {
+        if (preg_match('#^(.*?/maps/(?:[^/]+/){0,3}org/[^/]+/\d+)#u', $path, $matches)) {
+            return $scheme.'://'.$host.rtrim($matches[1], '/').'/reviews/';
+        }
+
+        $organizationId = $this->extractPoiOrganizationId($parts['query'] ?? '');
+
+        if (
+            $organizationId === null
+            || preg_match('#^/maps(?:/[^/]+){0,3}/?$#u', $path) !== 1
+        ) {
             return null;
         }
 
-        return $scheme.'://'.$host.rtrim($matches[1], '/').'/reviews/';
+        return $scheme.'://'.$host.rtrim($path, '/')
+            .'/org/-/'.$organizationId.'/reviews/';
+    }
+
+    private function extractPoiOrganizationId(string $query): ?string
+    {
+        parse_str($query, $parameters);
+        $poiUri = $parameters['poi']['uri'] ?? null;
+
+        if (! is_string($poiUri)) {
+            return null;
+        }
+
+        $parts = parse_url($poiUri);
+
+        if (($parts['scheme'] ?? '') !== 'ymapsbm1' || ($parts['host'] ?? '') !== 'org') {
+            return null;
+        }
+
+        parse_str($parts['query'] ?? '', $poiParameters);
+        $organizationId = $poiParameters['oid'] ?? null;
+
+        return is_string($organizationId) && ctype_digit($organizationId)
+            ? $organizationId
+            : null;
     }
 
     private function assertAllowedHost(string $scheme, string $host): void

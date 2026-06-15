@@ -49,6 +49,24 @@ class YandexMapsDataSourceTest extends TestCase
         Http::assertNotSent(fn (Request $request) => str_contains($request->url(), 'page=3'));
     }
 
+    public function test_it_normalizes_shared_map_url_with_poi_organization(): void
+    {
+        Http::fake([
+            '*' => Http::response($this->page([
+                $this->review('review-1', 'Anna', 5, 'Great service', '2026-05-10T12:00:00Z'),
+            ], page: 1, totalPages: 1)),
+        ]);
+        $url = 'https://yandex.kz/maps/10295/kostanai/?ll=63.616495%2C53.217643'
+            .'&mode=poi&poi%5Bpoint%5D=63.569732%2C53.219686'
+            .'&poi%5Buri%5D=ymapsbm1%3A%2F%2Forg%3Foid%3D162508758578'
+            .'&utm_source=share&z=14';
+
+        $this->source()->fetch($url);
+
+        Http::assertSent(fn (Request $request) => $request->url()
+            === 'https://yandex.kz/maps/10295/kostanai/org/-/162508758578/reviews/');
+    }
+
     public function test_it_loads_at_most_six_hundred_reviews(): void
     {
         config()->set('yandex.max_pages', 99);
