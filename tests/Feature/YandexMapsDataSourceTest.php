@@ -49,6 +49,75 @@ class YandexMapsDataSourceTest extends TestCase
         Http::assertNotSent(fn (Request $request) => str_contains($request->url(), 'page=3'));
     }
 
+    public function test_it_loads_at_most_six_hundred_reviews(): void
+    {
+        config()->set('yandex.max_pages', 99);
+
+        Http::fake(function (Request $request) {
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+            $page = (int) ($query['page'] ?? 1);
+            $reviews = [];
+
+            for ($position = 1; $position <= 50; $position++) {
+                $number = (($page - 1) * 50) + $position;
+                $reviews[] = $this->review(
+                    "review-{$number}",
+                    "Author {$number}",
+                    ($number % 5) + 1,
+                    "Review {$number}",
+                    '2026-05-10T12:00:00Z',
+                );
+            }
+
+            return Http::response($this->page($reviews, page: $page, totalPages: 20));
+        });
+
+        $data = $this->source()->fetch('https://yandex.ru/maps/org/example/123');
+
+        $this->assertCount(600, $data->reviews);
+        $this->assertSame('review-1', $data->reviews[0]->externalId);
+        $this->assertSame('review-600', $data->reviews[599]->externalId);
+        Http::assertSentCount(12);
+        Http::assertNotSent(fn (Request $request) => str_contains($request->url(), 'page=13'));
+    }
+
+    public function test_it_reports_an_empty_review_page(): void
+    {
+        config()->set('yandex.max_pages', 2);
+        Http::fake(function (Request $request) {
+            if (str_contains($request->url(), 'page=2')) {
+                return Http::response($this->page([], page: 2, totalPages: 2));
+            }
+
+            return Http::response($this->page([
+                $this->review('review-1', 'Anna', 5, 'Great service', '2026-05-10T12:00:00Z'),
+            ], page: 1, totalPages: 2));
+        });
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Яндекс.Карты не вернули отзывы на странице 2.');
+
+        $this->source()->fetch('https://yandex.ru/maps/org/example/123');
+    }
+
+    public function test_it_reports_incomplete_review_data(): void
+    {
+        Http::fake([
+            '*' => Http::response($this->page([[
+                'reviewId' => 'review-1',
+                'author' => ['name' => 'Anna'],
+                'rating' => 0,
+                'text' => 'Invalid rating',
+                'updatedTime' => '2026-05-10T12:00:00Z',
+            ]], page: 1, totalPages: 1)),
+        ]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Яндекс.Карты вернули отзыв с неполными данными.');
+
+        $this->source()->fetch('https://yandex.ru/maps/org/example/123');
+    }
+
     public function test_it_rejects_non_yandex_urls(): void
     {
         $this->expectException(RuntimeException::class);
